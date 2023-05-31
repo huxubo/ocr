@@ -5,6 +5,8 @@ import argparse
 import base64
 import requests
 from fastapi import FastAPI, Form, File, UploadFile
+import io
+from PIL import Image
 
 from pydantic import BaseModel
 
@@ -35,7 +37,11 @@ class Ocr():
     @staticmethod
     def slide_image(target_img: bytes, background_img: bytes):
         try:
-            return Ocr.slide.slide_comparison(target_img, background_img)
+            imageStream = io.BytesIO(target_img)
+            imageFile = Image.open(imageStream)
+            background_img = imageFile.crop((0, 300, 240, 450))  # (x1, y1, x2, y2)
+            cropped = imageFile.crop((0, 0, 240, 150))  # (x1, y1, x2, y2)
+            return Ocr.slide.slide_comparison(ca(cropped), ca(background_img))
         except Exception as e:
             return Ocr.slide.slide_match(target_img, background_img)
 
@@ -51,7 +57,11 @@ def ocr_img(type, img_bytes, background_img_bytes):
     else:
         return None
 
-
+def ca(img):
+    img_byte_array = io.BytesIO()
+    img.save(img_byte_array, format='PNG', subsampling=0, quality=100)
+    img_byte_array = img_byte_array.getvalue()
+    return img_byte_array
 
 app = FastAPI()
 
